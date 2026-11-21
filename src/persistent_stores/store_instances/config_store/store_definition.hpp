@@ -1000,6 +1000,9 @@ struct CurrentStore
     StoreItem<bool, true, ItemFlag::features, journal::hash("Check chamber ventilation state")> check_chamber_vent_state;
     StoreItem<bool, true, ItemFlag::hw_config, journal::hash("Auto chamber vent enabled")> auto_chamber_vent_enabled;
 
+    /// Close the chamber vents at the end of a print. Only effective with automatic vent control.
+    StoreItem<bool, false, ItemFlag::features, journal::hash("Close chamber vents when idle")> close_chamber_vents_when_idle;
+
     VentControl get_vent_control();
     void set_vent_control(VentControl state);
 #endif

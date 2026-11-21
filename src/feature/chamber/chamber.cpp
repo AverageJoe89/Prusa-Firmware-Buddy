@@ -238,6 +238,10 @@ void Chamber::close_vents_after_print() {
         return;
     }
 
+    if (!config_store().close_chamber_vents_when_idle.get()) {
+        return;
+    }
+
     automatic_chamber_vents::execute_control(VentState::closed);
 }
 #endif

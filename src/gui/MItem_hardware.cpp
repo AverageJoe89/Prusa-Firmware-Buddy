@@ -184,6 +184,17 @@ void MI_SWITCH_VENT_MECHANISM::OnChange([[maybe_unused]] size_t old_index) {
 void MI_SWITCH_VENT_MECHANISM::Loop() {
     set_current_item(std::to_underlying(config_store().get_vent_control()));
 }
+
+MI_VENT_CLOSING_WHEN_IDLE::MI_VENT_CLOSING_WHEN_IDLE()
+    : WI_ICON_SWITCH_OFF_ON_t(config_store().close_chamber_vents_when_idle.get(), _(label), nullptr, is_enabled_t::yes, is_hidden_t::no) {}
+
+void MI_VENT_CLOSING_WHEN_IDLE::OnChange([[maybe_unused]] size_t old_index) {
+    config_store().close_chamber_vents_when_idle.set(value());
+}
+
+void MI_VENT_CLOSING_WHEN_IDLE::Loop() {
+    set_enabled(config_store().get_vent_control() == VentControl::automatic);
+}
 #endif
 
 #if HAS_SWITCHABLE_HOMING_CALIBRATION()

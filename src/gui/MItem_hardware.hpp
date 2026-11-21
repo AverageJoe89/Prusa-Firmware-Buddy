@@ -124,6 +124,20 @@ protected:
     /// Keep in sync when an edition selection changes the vent control.
     void Loop() override;
 };
+
+/// Close the chamber vents at the end of a print. Enabled only with automatic vent control.
+class MI_VENT_CLOSING_WHEN_IDLE : public WI_ICON_SWITCH_OFF_ON_t {
+    static constexpr const char *const label = N_("Vent Closing When Idle");
+
+public:
+    MI_VENT_CLOSING_WHEN_IDLE();
+
+protected:
+    virtual void OnChange(size_t old_index) override;
+
+    /// Follows the vent control setting, which can change while the menu is open.
+    void Loop() override;
+};
 #endif
 
 #if HAS_SWITCHABLE_HOMING_CALIBRATION()

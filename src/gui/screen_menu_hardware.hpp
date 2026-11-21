@@ -90,6 +90,7 @@ using ScreenMenuHardwareBase = BasicScreenMenu<
 
 #if HAS_CHAMBER_VENTS()
     MI_SWITCH_VENT_MECHANISM,
+    MI_VENT_CLOSING_WHEN_IDLE,
 #endif
 #if HAS_AUTO_RETRACT()
     MI_PRE_NOZZLE_CLEANING_RETRACT,
