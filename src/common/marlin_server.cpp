@@ -2462,12 +2462,28 @@ static void _server_print_loop(void) {
         {
             // Find the highest chamber target temperature across the filaments used by the print
             std::optional<uint8_t> max_chamber_target_temp;
-            GCodeInfo::getInstance().for_each_used_extruder([&]([[maybe_unused]] GcodeToolIndex, VirtualToolIndex virtual_tool, const GCodeInfo::ExtruderInfo &) {
-                const auto target = FilamentType::for_tool_heuristic(virtual_tool).parameters().chamber_target_temperature;
+            const auto consider_filament = [&](FilamentType filament) {
+                const auto target = filament.parameters().chamber_target_temperature;
                 if (target.has_value() && (!max_chamber_target_temp.has_value() || *target > *max_chamber_target_temp)) {
                     max_chamber_target_temp = target;
                 }
-            });
+            };
+
+            if (server.print_is_serial) {
+                // GCodeInfo is not loaded for serial prints (it may even hold data of a previous file print),
+                // so we don't know which tools will be used - consider the filaments loaded in all enabled tools.
+                for (auto virtual_tool : VirtualToolIndex::all().skip_all_disabled()) {
+                    if (const auto filament = FilamentType::for_tool(virtual_tool)) {
+                        consider_filament(filament);
+                    } else if (const auto previous_filament = config_store().get_previous_filament_type(virtual_tool)) {
+                        consider_filament(previous_filament);
+                    }
+                }
+            } else {
+                GCodeInfo::getInstance().for_each_used_extruder([&]([[maybe_unused]] GcodeToolIndex, VirtualToolIndex virtual_tool, const GCodeInfo::ExtruderInfo &) {
+                    consider_filament(FilamentType::for_tool_heuristic(virtual_tool));
+                });
+            }
             buddy::chamber().manage_ventilation_state(max_chamber_target_temp);
         }
 #endif
