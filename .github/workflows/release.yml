@@ -31,7 +31,7 @@ jobs:
       suffix: ${{ steps.version.outputs.suffix }}
       prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -81,16 +81,20 @@ jobs:
         preset: [coreone, coreonel]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The build number is derived from the commit count.
           fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
-      - uses: actions/cache@v4
+      # msgfmt is needed to compile translations.
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y gettext
+
+      - uses: actions/cache@v6
         with:
           path: |
             .dependencies
@@ -107,7 +111,7 @@ jobs:
           --version-suffix-short='${{ needs.version.outputs.suffix }}'
           --no-store-output
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: firmware-${{ matrix.preset }}
           path: |
@@ -120,12 +124,12 @@ jobs:
     if: github.ref_type == 'tag' || inputs.release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: products
           merge-multiple: true
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.version.outputs.tag }}
           target_commitish: ${{ github.sha }}
