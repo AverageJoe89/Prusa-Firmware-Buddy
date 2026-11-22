@@ -1,0 +1,134 @@
+name: Build firmware release
+
+# Release version is "<version.txt>" or "<version.txt>-<SUFFIX>" (e.g. 8.0.0-BETA1).
+# Either enter it in Actions tab -> "Run workflow" (the tag is created
+# automatically), or push it as a tag.
+on:
+  push:
+    tags:
+      - '*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version, must match version.txt, e.g. 8.0.0-BETA1 or 8.0.0'
+        type: string
+        required: true
+      release:
+        description: 'Create tag and GitHub release (unchecked = build only)'
+        type: boolean
+        default: true
+
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('Build {0} {1}', inputs.version, github.ref_name) || github.ref_name }}
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      suffix: ${{ steps.version.outputs.suffix }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          version=$(grep -oE '^[0-9]+\.[0-9]+\.[0-9]+' version.txt)
+          build_number=$(git rev-list --count HEAD)
+
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            tag="$(echo "$INPUT_VERSION" | xargs)"
+          fi
+
+          case "$tag" in
+            "$version") suffix="" ;;
+            "$version"-*) suffix="-${tag#"$version"-}" ;;
+            *)
+              echo "::error::Version '$tag' does not match version.txt ($version). Use '$version' or '$version-<SUFFIX>', or update version.txt."
+              exit 1
+              ;;
+          esac
+          if ! [[ "$suffix" =~ ^(-[A-Za-z0-9.]+)?$ ]]; then
+            echo "::error::Suffix '$suffix' may only contain letters, digits and dots."
+            exit 1
+          fi
+
+          if [ "$GITHUB_REF_TYPE" != tag ] && git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then
+            echo "::error::Tag '$tag' already exists. Use a different suffix or bump version.txt."
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "suffix=${suffix}+${build_number}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$([ -n "$suffix" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "### Firmware version: ${version}${suffix}+${build_number}" >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    needs: version
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [coreone, coreonel]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The build number is derived from the commit count.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .dependencies
+            .venv
+          key: deps-${{ runner.os }}-${{ hashFiles('utils/bootstrap.py', 'requirements.txt') }}
+
+      - name: Build
+        run: >
+          python utils/build.py
+          --preset ${{ matrix.preset }}
+          --build-type release
+          --bootloader yes
+          --version-suffix='${{ needs.version.outputs.suffix }}'
+          --version-suffix-short='${{ needs.version.outputs.suffix }}'
+          --no-store-output
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.preset }}
+          path: |
+            build/products/*.bbf
+            build/products/*.bin
+          if-no-files-found: error
+
+  release:
+    needs: [version, build]
+    if: github.ref_type == 'tag' || inputs.release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: products
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          files: products/*
+          prerelease: ${{ needs.version.outputs.prerelease }}
+          generate_release_notes: true
