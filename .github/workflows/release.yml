@@ -78,7 +78,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        preset: [coreone, coreonel]
+        preset: [coreone, coreone_indx, coreonel, coreonel_indx]
 
     steps:
       - uses: actions/checkout@v7
