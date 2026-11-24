@@ -6,6 +6,7 @@
 #include <option/has_phase_stepping_calibration.h>
 #include <option/has_input_shaper_calibration.h>
 #include <option/has_door_sensor_calibration.h>
+#include <option/has_pressure_advance_calibration.h>
 #include <option/has_manual_belt_tuning.h>
 #include <option/has_indx.h>
 #include <option/has_heaters_selftest_gcode.h>
@@ -83,6 +84,12 @@ static constexpr uint32_t score(ClientFSM fsm_type) {
     case ClientFSM::WastebinEmptying:
     #endif
         // Show over Printing and PrintPreview - these interrupt both
+        return 3;
+#endif
+
+#if HAS_PRESSURE_ADVANCE_CALIBRATION()
+    case ClientFSM::PressureAdvanceCalibration:
+        // Also offered nested over Load_unload (score 2) at the end of a filament load
         return 3;
 #endif
 

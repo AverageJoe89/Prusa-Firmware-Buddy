@@ -31,6 +31,11 @@ using ScreenMenuFilament__ = ScreenMenu<GuiDefaults::MenuFooter,
 #endif
     MI_CHANGE,
     MI_PURGE,
+#if HAS_PRESSURE_ADVANCE_CALIBRATION()
+    MI_PRESSURE_ADVANCE_CALIBRATION,
+    MI_PRESSURE_ADVANCE_AFTER_LOAD,
+    MI_PRESSURE_ADVANCE_GCODE_OVERRIDE,
+#endif
     MI_FILAMENT_MANAGEMENT //
     >;
 
