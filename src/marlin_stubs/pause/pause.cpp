@@ -580,14 +580,10 @@ void Pause::filament_push_ask_process(Response response) {
 
         if (response == Response::Continue || is_mmu_rework_and_has_filament) {
             set(LoadState::load_to_gears);
-        } else if (!is_unstoppable() && side_fs_empty && extruder_fs_not_working) {
-            // Extruder sensor unusable and side sensor empty: nothing can signal arrival, so exit
-#if HAS_SIDE_FSENSOR()
-            // Only a manual load needs an explanation; pulling out of an autoload is deliberate
-            if (load_type == LoadType::load) {
-                marlin_server::set_warning(WarningType::ExtruderFSensorNotReady);
-            }
-#endif
+        } else if (load_type != LoadType::load && !is_unstoppable() && side_fs_empty && extruder_fs_not_working) {
+            // The side sensor started this load and the filament was pulled back out: nothing can signal its
+            // arrival anymore, so exit. A load from the menu waits for the user to confirm or stop instead, the
+            // side sensor is empty there until the filament gets inserted.
             set(LoadState::stop);
         }
     }
